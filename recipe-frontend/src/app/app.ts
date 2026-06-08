@@ -1,10 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { AuthService } from './core/auth.service';
+import { RecipeDetailsModalComponent } from './shared/recipe-details-modal.component';
+import { RecipeEditorModalComponent } from './shared/recipe-editor-modal.component';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, RecipeEditorModalComponent, RecipeDetailsModalComponent],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })

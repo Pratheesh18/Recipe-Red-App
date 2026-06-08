@@ -24,4 +24,12 @@ export class RecipesService {
   createRecipe(payload: CreateRecipeRequest) {
     return this.http.post<RecipeDetailsResponse>(`${apiBaseUrl}/recipes`, payload);
   }
+
+  getRecipe(id: string) {
+    return this.http.get<RecipeDetailsResponse>(`${apiBaseUrl}/recipes/${id}`);
+  }
+
+  updateRecipe(id: string, payload: CreateRecipeRequest) {
+    return this.http.put<RecipeDetailsResponse>(`${apiBaseUrl}/recipes/${id}`, payload);
+  }
 }

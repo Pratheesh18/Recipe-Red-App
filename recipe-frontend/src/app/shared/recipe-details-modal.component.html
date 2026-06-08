@@ -1,0 +1,66 @@
+@if (state().isOpen) {
+  <div class="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/55 p-4 backdrop-blur-sm" (click)="close()">
+    <section
+      class="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] border border-stone-900/10 bg-white shadow-[0_35px_90px_-30px_rgba(0,0,0,0.45)]"
+      (click)="$event.stopPropagation()"
+    >
+      @if (isLoading()) {
+        <div class="p-8 sm:p-10">
+          <div class="h-72 animate-pulse rounded-[1.75rem] bg-stone-100"></div>
+        </div>
+      } @else if (recipe(); as currentRecipe) {
+        <div
+          class="flex min-h-56 items-end bg-gradient-to-br from-amber-200 via-orange-100 to-stone-200 p-6 sm:min-h-72 sm:p-8"
+          [style.background-image]="currentRecipe.imageUrl ? 'linear-gradient(rgba(34,22,11,0.14), rgba(34,22,11,0.58)), url(' + currentRecipe.imageUrl + ')' : null"
+          [style.background-size]="currentRecipe.imageUrl ? 'cover' : null"
+          [style.background-position]="currentRecipe.imageUrl ? 'center' : null"
+        >
+          <div class="max-w-2xl">
+            <div class="inline-flex rounded-full bg-white/85 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-stone-800">
+              {{ currentRecipe.author }}
+            </div>
+            <h2 class="mt-4 font-display text-3xl leading-tight text-stone-950 sm:text-5xl">
+              {{ currentRecipe.title }}
+            </h2>
+          </div>
+        </div>
+
+        <div class="space-y-6 p-6 sm:p-8">
+          <div class="grid gap-3 rounded-[1.5rem] border border-stone-900/8 bg-stone-50 p-4 text-sm text-stone-600 sm:grid-cols-3 sm:p-5">
+            <div>
+              <div class="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-stone-500">Posted</div>
+              <div class="mt-2 text-sm font-semibold text-stone-900">{{ currentRecipe.createdAt | date: 'mediumDate' }}</div>
+            </div>
+            <div>
+              <div class="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-stone-500">Updated</div>
+              <div class="mt-2 text-sm font-semibold text-stone-900">
+                {{ currentRecipe.updatedAt ? (currentRecipe.updatedAt | date: 'mediumDate') : 'Not updated yet' }}
+              </div>
+            </div>
+            <div>
+              <div class="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-stone-500">Votes</div>
+              <div class="mt-2 text-sm font-semibold text-stone-900">{{ currentRecipe.voteCount }}</div>
+            </div>
+          </div>
+
+          <div>
+            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-amber-700">Description</p>
+            <p class="mt-4 whitespace-pre-line text-base leading-8 text-stone-700 sm:text-lg">
+              {{ currentRecipe.description }}
+            </p>
+          </div>
+
+          <div class="flex justify-end">
+            <button
+              type="button"
+              (click)="close()"
+              class="rounded-full border border-stone-900/15 bg-white px-6 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-900 hover:bg-stone-50"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      }
+    </section>
+  </div>
+}

@@ -41,6 +41,8 @@ export interface RecipeDetailsResponse {
   updatedAt: string | null;
 }
 
+export type RecipeEditorMode = 'create' | 'update';
+
 export interface PagedResponse<T> {
   items: T[];
   page: number;

@@ -3,6 +3,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../core/auth.service';
+import { ToastService } from '../core/toast.service';
 
 @Component({
   selector: 'app-register-page',
@@ -13,10 +14,9 @@ import { AuthService } from '../core/auth.service';
 export class RegisterPageComponent {
   private readonly authService = inject(AuthService);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly toastService = inject(ToastService);
 
   protected readonly isSubmitting = signal(false);
-  protected readonly errorMessage = signal('');
-  protected readonly successMessage = signal('');
   protected readonly form = this.formBuilder.group({
     username: ['', [Validators.required, Validators.minLength(3)]],
     email: ['', [Validators.required, Validators.email]],
@@ -32,8 +32,6 @@ export class RegisterPageComponent {
     const { username, email, password } = this.form.getRawValue();
 
     this.isSubmitting.set(true);
-    this.errorMessage.set('');
-    this.successMessage.set('');
 
     this.authService
       .register({
@@ -44,14 +42,15 @@ export class RegisterPageComponent {
       .pipe(finalize(() => this.isSubmitting.set(false)))
       .subscribe({
         next: (response) => {
-          this.successMessage.set(response.message || 'User registered successfully. You can log in now.');
+          this.toastService.success(response.message || 'Registered successfully. You can log in now.', 'Account created');
           this.form.reset();
         },
         error: (error) => {
-          this.errorMessage.set(
+          this.toastService.error(
             typeof error?.error === 'string'
               ? error.error
-              : 'Registration failed. Please check your details and backend API.'
+              : 'Registration failed. Please check your details and backend API.',
+            'Registration failed'
           );
         }
       });

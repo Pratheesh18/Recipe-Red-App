@@ -1,11 +1,14 @@
 import { DatePipe } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { Component, effect, inject, signal, untracked } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { RecipesService } from '../core/recipes.service';
 import { RecipeFeedItem } from '../core/models';
 import { AuthService } from '../core/auth.service';
+import { RecipeDetailsModalService } from '../core/recipe-details-modal.service';
+import { RecipeEditorModalService } from '../core/recipe-editor-modal.service';
+import { ToastService } from '../core/toast.service';
 
 @Component({
   selector: 'app-home-page',
@@ -15,21 +18,27 @@ import { AuthService } from '../core/auth.service';
 })
 export class HomePageComponent {
   protected readonly authService = inject(AuthService);
-  private readonly route = inject(ActivatedRoute);
+  private readonly recipeDetailsModalService = inject(RecipeDetailsModalService);
+  private readonly recipeEditorModalService = inject(RecipeEditorModalService);
   private readonly recipesService = inject(RecipesService);
+  private readonly toastService = inject(ToastService);
 
   protected readonly recipes = signal<RecipeFeedItem[]>([]);
   protected readonly isLoading = signal(true);
-  protected readonly errorMessage = signal('');
-  protected readonly successMessage = signal('');
   protected searchTerm = '';
   protected readonly skeletons = Array.from({ length: 6 }, (_, index) => index);
 
   constructor() {
-    this.route.queryParamMap.subscribe((params) => {
-      this.successMessage.set(
-        params.get('created') === '1' ? 'Recipe created successfully and added to the feed.' : ''
-      );
+    effect(() => {
+      const mutationCount = this.recipeEditorModalService.mutationCount();
+
+      if (mutationCount === 0) {
+        return;
+      }
+
+      untracked(() => {
+        this.fetchRecipes(this.searchTerm);
+      });
     });
 
     this.fetchRecipes();
@@ -39,9 +48,24 @@ export class HomePageComponent {
     this.fetchRecipes(this.searchTerm);
   }
 
+  protected openCreateRecipeModal(): void {
+    this.recipeEditorModalService.openCreate();
+  }
+
+  protected openRecipeDetailsModal(recipeId: string): void {
+    this.recipeDetailsModalService.open(recipeId);
+  }
+
+  protected openUpdateRecipeModal(recipeId: string): void {
+    this.recipeEditorModalService.openUpdate(recipeId);
+  }
+
+  protected isRecipeOwner(recipe: RecipeFeedItem): boolean {
+    return this.authService.state().userName === recipe.author;
+  }
+
   private fetchRecipes(search = ''): void {
     this.isLoading.set(true);
-    this.errorMessage.set('');
 
     this.recipesService
       .getRecipes(search)
@@ -51,7 +75,10 @@ export class HomePageComponent {
           this.recipes.set(response.items);
         },
         error: () => {
-          this.errorMessage.set('We could not load recipes right now. Please check that the backend API is running.');
+          this.toastService.error(
+            'We could not load recipes right now. Please check that the backend API is running.',
+            'Feed unavailable'
+          );
         }
       });
   }

@@ -3,6 +3,7 @@ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../core/auth.service';
+import { ToastService } from '../core/toast.service';
 
 @Component({
   selector: 'app-login-page',
@@ -16,9 +17,9 @@ export class LoginPageComponent {
   private readonly formBuilder = inject(FormBuilder);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly toastService = inject(ToastService);
 
   protected readonly isSubmitting = signal(false);
-  protected readonly errorMessage = signal('');
   protected readonly form = this.formBuilder.group({
     email: ['', [Validators.required, Validators.email]],
     password: ['', [Validators.required]]
@@ -33,7 +34,6 @@ export class LoginPageComponent {
     const { email, password } = this.form.getRawValue();
 
     this.isSubmitting.set(true);
-    this.errorMessage.set('');
 
     this.authService
       .login({
@@ -43,14 +43,16 @@ export class LoginPageComponent {
       .pipe(finalize(() => this.isSubmitting.set(false)))
       .subscribe({
         next: () => {
+          this.toastService.success('Logged in successfully.', 'Welcome back');
           const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
           void this.router.navigateByUrl(returnUrl);
         },
         error: (error) => {
-          this.errorMessage.set(
+          this.toastService.error(
             typeof error?.error === 'string'
               ? error.error
-              : 'Login failed. Please check your credentials and backend API.'
+              : 'Login failed. Please check your credentials and backend API.',
+            'Login failed'
           );
         }
       });
