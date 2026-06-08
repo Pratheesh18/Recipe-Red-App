@@ -15,6 +15,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<Recipe> Recipes => Set<Recipe>();
 
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -26,6 +28,23 @@ public class ApplicationDbContext : DbContext
 
             entity.Property(user => user.Email)
                 .HasMaxLength(255);
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.Property(token => token.TokenHash)
+                .HasMaxLength(64);
+
+            entity.Property(token => token.ReplacedByTokenHash)
+                .HasMaxLength(64);
+
+            entity.HasIndex(token => token.TokenHash)
+                .IsUnique();
+
+            entity.HasOne(token => token.User)
+                .WithMany(user => user.RefreshTokens)
+                .HasForeignKey(token => token.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<Recipe>(entity =>

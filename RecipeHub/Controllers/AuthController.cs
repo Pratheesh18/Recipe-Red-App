@@ -16,15 +16,18 @@ public class AuthController : ControllerBase
 {
     private readonly ApplicationDbContext _dbContext;
     private readonly JwtTokenGenerator _jwtTokenGenerator;
+    private readonly RefreshTokenService _refreshTokenService;
     private readonly JwtSettings _jwtSettings;
 
     public AuthController(
         ApplicationDbContext dbContext,
         JwtTokenGenerator jwtTokenGenerator,
+        RefreshTokenService refreshTokenService,
         IOptions<JwtSettings> jwtOptions)
     {
         _dbContext = dbContext;
         _jwtTokenGenerator = jwtTokenGenerator;
+        _refreshTokenService = refreshTokenService;
         _jwtSettings = jwtOptions.Value;
     }
 
@@ -81,7 +84,46 @@ public class AuthController : ControllerBase
             return Unauthorized("Invalid username/email or password.");
         }
 
+        var (refreshToken, rawRefreshToken) = await _refreshTokenService.CreateAsync(user);
+        AppendRefreshTokenCookie(rawRefreshToken, refreshToken.ExpiresAtUtc);
+
         return Ok(CreateAuthResponse(user));
+    }
+
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    public async Task<ActionResult<AuthResponse>> Refresh(CancellationToken cancellationToken)
+    {
+        var rawRefreshToken = Request.Cookies[_jwtSettings.RefreshTokenCookieName];
+        if (string.IsNullOrWhiteSpace(rawRefreshToken))
+        {
+            ClearRefreshTokenCookie();
+            return Unauthorized("Refresh token is missing.");
+        }
+
+        var result = await _refreshTokenService.RotateAsync(rawRefreshToken, cancellationToken);
+        if (result is null)
+        {
+            ClearRefreshTokenCookie();
+            return Unauthorized("Refresh token is invalid or expired.");
+        }
+
+        AppendRefreshTokenCookie(result.Value.rawToken, result.Value.refreshToken.ExpiresAtUtc);
+        return Ok(CreateAuthResponse(result.Value.user));
+    }
+
+    [HttpPost("logout")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Logout(CancellationToken cancellationToken)
+    {
+        var rawRefreshToken = Request.Cookies[_jwtSettings.RefreshTokenCookieName];
+        if (!string.IsNullOrWhiteSpace(rawRefreshToken))
+        {
+            await _refreshTokenService.RevokeAsync(rawRefreshToken, cancellationToken);
+        }
+
+        ClearRefreshTokenCookie();
+        return NoContent();
     }
 
     [HttpGet("me")]
@@ -117,11 +159,39 @@ public class AuthController : ControllerBase
     {
         return new AuthResponse
         {
-            Token = _jwtTokenGenerator.GenerateToken(user),
+            AccessToken = _jwtTokenGenerator.GenerateAccessToken(user),
             ExpiresAtUtc = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes),
             UserId = user.Id,
             UserName = user.UserName,
             Email = user.Email
         };
+    }
+
+    private void AppendRefreshTokenCookie(string rawRefreshToken, DateTime expiresAtUtc)
+    {
+        Response.Cookies.Append(
+            _jwtSettings.RefreshTokenCookieName,
+            rawRefreshToken,
+            new CookieOptions
+            {
+                HttpOnly = true,
+                SameSite = SameSiteMode.Lax,
+                Secure = Request.IsHttps,
+                Path = "/api/auth",
+                Expires = new DateTimeOffset(expiresAtUtc)
+            });
+    }
+
+    private void ClearRefreshTokenCookie()
+    {
+        Response.Cookies.Delete(
+            _jwtSettings.RefreshTokenCookieName,
+            new CookieOptions
+            {
+                HttpOnly = true,
+                SameSite = SameSiteMode.Lax,
+                Secure = Request.IsHttps,
+                Path = "/api/auth"
+            });
     }
 }

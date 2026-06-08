@@ -1,5 +1,5 @@
 export interface AuthResponse {
-  token: string;
+  accessToken: string;
   expiresAtUtc: string;
   userId: string;
   userName: string;
@@ -53,7 +53,7 @@ export interface PagedResponse<T> {
 
 export interface AuthState {
   isAuthenticated: boolean;
-  token: string | null;
+  accessToken: string | null;
   userName: string | null;
   email: string | null;
 }

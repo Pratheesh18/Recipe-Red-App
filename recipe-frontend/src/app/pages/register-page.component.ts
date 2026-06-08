@@ -49,7 +49,7 @@ export class RegisterPageComponent {
           this.toastService.error(
             typeof error?.error === 'string'
               ? error.error
-              : 'Registration failed. Please check your details and backend API.',
+              : 'Registration failed. Please check your details',
             'Registration failed'
           );
         }

@@ -15,6 +15,10 @@ export class App {
 
   protected readonly authState = this.authService.state;
 
+  constructor() {
+    this.authService.restoreSession();
+  }
+
   protected logout(): void {
     this.authService.logout();
   }

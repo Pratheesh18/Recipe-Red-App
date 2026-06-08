@@ -1,17 +1,19 @@
 import { Injectable, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { tap } from 'rxjs';
+import { catchError, finalize, map, Observable, of, shareReplay, tap, throwError } from 'rxjs';
 import { apiBaseUrl } from './api.config';
 import { AuthResponse, AuthState, RegisterResponse } from './models';
 
-const tokenStorageKey = 'recipehub_token';
+const accessTokenStorageKey = 'recipehub_token';
 const legacyUserNameStorageKey = 'recipehub_user_name';
 const legacyEmailStorageKey = 'recipehub_email';
+const accessTokenExpiryBufferSeconds = 30;
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   readonly state = signal<AuthState>(this.readInitialState());
+  private refreshRequest$: Observable<AuthState> | null = null;
 
   constructor(
     private readonly http: HttpClient,
@@ -24,45 +26,104 @@ export class AuthService {
 
   login(payload: { email: string; password: string }) {
     return this.http
-      .post<AuthResponse>(`${apiBaseUrl}/auth/login`, payload)
+      .post<AuthResponse>(`${apiBaseUrl}/auth/login`, payload, {
+        withCredentials: true
+      })
       .pipe(tap((response) => this.persistSession(response)));
   }
 
-  logout(): void {
-    localStorage.removeItem(tokenStorageKey);
-    this.clearLegacyStorage();
-    this.state.set({
-      isAuthenticated: false,
-      token: null,
-      userName: null,
-      email: null
-    });
-    void this.router.navigateByUrl('/login');
+  refresh(): Observable<AuthState> {
+    if (this.refreshRequest$) {
+      return this.refreshRequest$;
+    }
+
+    this.refreshRequest$ = this.http
+      .post<AuthResponse>(`${apiBaseUrl}/auth/refresh`, {}, {
+        withCredentials: true
+      })
+      .pipe(
+        tap((response) => this.persistSession(response)),
+        map(() => this.state()),
+        catchError((error) => {
+          this.clearSession(false);
+          return throwError(() => error);
+        }),
+        finalize(() => {
+          this.refreshRequest$ = null;
+        }),
+        shareReplay(1)
+      );
+
+    return this.refreshRequest$;
   }
 
-  getToken(): string | null {
-    return this.state().token;
+  restoreSession(): void {
+    const accessToken = this.state().accessToken;
+
+    if (accessToken && !this.isAccessTokenExpired(accessToken)) {
+      return;
+    }
+
+    this.refresh().subscribe({
+      error: () => {
+        this.clearSession(false);
+      }
+    });
+  }
+
+  logout(): void {
+    this.clearSession(false);
+
+    this.http.post<void>(`${apiBaseUrl}/auth/logout`, {}, {
+      withCredentials: true
+    })
+      .pipe(catchError(() => of(void 0)))
+      .subscribe({
+        next: () => {
+          void this.router.navigateByUrl('/login');
+        }
+      });
+  }
+
+  handleRefreshFailure(redirectToLogin: boolean): void {
+    this.clearSession(false);
+
+    if (redirectToLogin) {
+      void this.router.navigateByUrl('/login');
+    }
+  }
+
+  getAccessToken(): string | null {
+    const accessToken = this.state().accessToken;
+    return accessToken && !this.isAccessTokenExpired(accessToken)
+      ? accessToken
+      : null;
   }
 
   private persistSession(response: AuthResponse): void {
-    localStorage.setItem(tokenStorageKey, response.token);
+    localStorage.setItem(accessTokenStorageKey, response.accessToken);
     this.clearLegacyStorage();
-    this.state.set(this.buildStateFromToken(response.token));
+    this.state.set(this.buildStateFromAccessToken(response.accessToken));
   }
 
   private readInitialState(): AuthState {
     this.clearLegacyStorage();
-    const token = localStorage.getItem(tokenStorageKey);
+    const accessToken = localStorage.getItem(accessTokenStorageKey);
 
-    if (!token) {
+    if (!accessToken) {
       return this.createSignedOutState();
     }
 
-    return this.buildStateFromToken(token);
+    if (this.isAccessTokenExpired(accessToken)) {
+      localStorage.removeItem(accessTokenStorageKey);
+      return this.createSignedOutState();
+    }
+
+    return this.buildStateFromAccessToken(accessToken);
   }
 
-  private buildStateFromToken(token: string): AuthState {
-    const payload = this.decodeTokenPayload(token);
+  private buildStateFromAccessToken(accessToken: string): AuthState {
+    const payload = this.decodeTokenPayload(accessToken);
     const userName =
       this.readStringClaim(payload, 'unique_name') ??
       this.readStringClaim(payload, 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name');
@@ -71,20 +132,32 @@ export class AuthService {
       this.readStringClaim(payload, 'http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress');
 
     if (!payload || !userName) {
-      localStorage.removeItem(tokenStorageKey);
+      localStorage.removeItem(accessTokenStorageKey);
       return this.createSignedOutState();
     }
 
     return {
       isAuthenticated: true,
-      token,
+      accessToken,
       userName,
       email
     };
   }
 
-  private decodeTokenPayload(token: string): Record<string, unknown> | null {
-    const parts = token.split('.');
+  private isAccessTokenExpired(accessToken: string): boolean {
+    const payload = this.decodeTokenPayload(accessToken);
+    const expiry = payload?.['exp'];
+
+    if (typeof expiry !== 'number') {
+      return true;
+    }
+
+    const currentUnixSeconds = Math.floor(Date.now() / 1000);
+    return expiry <= currentUnixSeconds + accessTokenExpiryBufferSeconds;
+  }
+
+  private decodeTokenPayload(accessToken: string): Record<string, unknown> | null {
+    const parts = accessToken.split('.');
 
     if (parts.length !== 3) {
       return null;
@@ -107,10 +180,20 @@ export class AuthService {
     return typeof value === 'string' && value.trim() ? value : null;
   }
 
+  private clearSession(redirectToLogin: boolean): void {
+    localStorage.removeItem(accessTokenStorageKey);
+    this.clearLegacyStorage();
+    this.state.set(this.createSignedOutState());
+
+    if (redirectToLogin) {
+      void this.router.navigateByUrl('/login');
+    }
+  }
+
   private createSignedOutState(): AuthState {
     return {
       isAuthenticated: false,
-      token: null,
+      accessToken: null,
       userName: null,
       email: null
     };

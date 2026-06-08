@@ -10,5 +10,9 @@ public class JwtSettings
 
     public string Audience { get; set; } = string.Empty;
 
-    public int ExpiryMinutes { get; set; } = 60;
+    public int ExpiryMinutes { get; set; } = 15;
+
+    public int RefreshTokenExpiryDays { get; set; } = 7;
+
+    public string RefreshTokenCookieName { get; set; } = "recipehub_refresh_token";
 }
