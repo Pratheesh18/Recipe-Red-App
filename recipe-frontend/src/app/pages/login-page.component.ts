@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../core/auth.service';
 
@@ -14,6 +14,7 @@ import { AuthService } from '../core/auth.service';
 export class LoginPageComponent {
   private readonly authService = inject(AuthService);
   private readonly formBuilder = inject(FormBuilder);
+  private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
   protected readonly isSubmitting = signal(false);
@@ -42,7 +43,8 @@ export class LoginPageComponent {
       .pipe(finalize(() => this.isSubmitting.set(false)))
       .subscribe({
         next: () => {
-          void this.router.navigateByUrl('/');
+          const returnUrl = this.route.snapshot.queryParamMap.get('returnUrl') || '/';
+          void this.router.navigateByUrl(returnUrl);
         },
         error: (error) => {
           this.errorMessage.set(

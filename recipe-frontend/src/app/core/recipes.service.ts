@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { apiBaseUrl } from './api.config';
-import { PagedResponse, RecipeFeedItem } from './models';
+import { CreateRecipeRequest, PagedResponse, RecipeDetailsResponse, RecipeFeedItem } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class RecipesService {
@@ -19,5 +19,9 @@ export class RecipesService {
     return this.http.get<PagedResponse<RecipeFeedItem>>(`${apiBaseUrl}/recipes`, {
       params
     });
+  }
+
+  createRecipe(payload: CreateRecipeRequest) {
+    return this.http.post<RecipeDetailsResponse>(`${apiBaseUrl}/recipes`, payload);
   }
 }

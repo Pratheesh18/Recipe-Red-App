@@ -23,6 +23,24 @@ export interface RecipeFeedItem {
   createdAt: string;
 }
 
+export interface CreateRecipeRequest {
+  title: string;
+  description: string;
+}
+
+export interface RecipeDetailsResponse {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string | null;
+  thumbnailUrl: string | null;
+  author: string;
+  voteCount: number;
+  hasUpvoted: boolean;
+  createdAt: string;
+  updatedAt: string | null;
+}
+
 export interface PagedResponse<T> {
   items: T[];
   page: number;
