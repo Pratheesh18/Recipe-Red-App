@@ -1,0 +1,27 @@
+# Build output
+bin/
+obj/
+
+# User-specific files
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local secrets / environment-specific config
+appsettings.Development.json
+appsettings.json
+secrets.json
+.env
+.env.*
+
+# Optional: local database files if you ever add them
+*.mdf
+*.ldf
