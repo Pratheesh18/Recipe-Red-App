@@ -17,6 +17,8 @@ public class ApplicationDbContext : DbContext
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    public DbSet<Vote> Votes => Set<Vote>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -55,6 +57,22 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(recipe => recipe.User)
                 .WithMany(user => user.Recipes)
                 .HasForeignKey(recipe => recipe.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Vote>(entity =>
+        {
+            entity.HasIndex(vote => new { vote.UserId, vote.RecipeId })
+                .IsUnique();
+
+            entity.HasOne(vote => vote.User)
+                .WithMany(user => user.Votes)
+                .HasForeignKey(vote => vote.UserId)
+                .OnDelete(DeleteBehavior.NoAction);
+
+            entity.HasOne(vote => vote.Recipe)
+                .WithMany(recipe => recipe.Votes)
+                .HasForeignKey(vote => vote.RecipeId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

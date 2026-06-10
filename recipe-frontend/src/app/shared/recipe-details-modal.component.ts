@@ -6,6 +6,7 @@ import { AuthService } from '../core/auth.service';
 import { RecipeDetailsResponse } from '../core/models';
 import { RecipeDetailsModalService } from '../core/recipe-details-modal.service';
 import { RecipeEditorModalService } from '../core/recipe-editor-modal.service';
+import { RecipeVoteStateService } from '../core/recipe-vote-state.service';
 import { RecipesService } from '../core/recipes.service';
 import { ToastService } from '../core/toast.service';
 
@@ -19,6 +20,7 @@ export class RecipeDetailsModalComponent {
   protected readonly authService = inject(AuthService);
   private readonly modalService = inject(RecipeDetailsModalService);
   private readonly recipeEditorModalService = inject(RecipeEditorModalService);
+  private readonly recipeVoteStateService = inject(RecipeVoteStateService);
   private readonly recipesService = inject(RecipesService);
   private readonly toastService = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
@@ -27,6 +29,7 @@ export class RecipeDetailsModalComponent {
   protected readonly recipe = signal<RecipeDetailsResponse | null>(null);
   protected readonly isLoading = signal(false);
   protected readonly isDeleting = signal(false);
+  protected readonly isVoting = signal(false);
 
   constructor() {
     effect(() => {
@@ -56,10 +59,33 @@ export class RecipeDetailsModalComponent {
           }
         });
     });
+
+    effect(() => {
+      const version = this.recipeVoteStateService.version();
+
+      if (version === 0) {
+        return;
+      }
+
+      const latestVote = this.recipeVoteStateService.latestVote();
+      if (!latestVote) {
+        return;
+      }
+
+      this.recipe.update((currentRecipe) =>
+        currentRecipe && currentRecipe.id === latestVote.recipeId
+          ? {
+            ...currentRecipe,
+            voteCount: latestVote.voteCount,
+            hasUpvoted: latestVote.hasUpvoted
+          }
+          : currentRecipe
+      );
+    });
   }
 
   protected close(): void {
-    if (this.isDeleting()) {
+    if (this.isDeleting() || this.isVoting()) {
       return;
     }
 
@@ -98,6 +124,31 @@ export class RecipeDetailsModalComponent {
         },
         error: () => {
           this.toastService.error('We could not delete this recipe right now.', 'Delete failed');
+        }
+      });
+  }
+
+  protected toggleVote(recipe: RecipeDetailsResponse): void {
+    if (this.isVoting()) {
+      return;
+    }
+
+    if (!this.authService.state().isAuthenticated) {
+      this.toastService.info('Log in to vote on recipes.', 'Login required');
+      return;
+    }
+
+    this.isVoting.set(true);
+
+    this.recipesService
+      .toggleVote(recipe.id)
+      .pipe(finalize(() => this.isVoting.set(false)))
+      .subscribe({
+        next: (response) => {
+          this.recipeVoteStateService.publish(response);
+        },
+        error: () => {
+          this.toastService.error('We could not update your vote right now.', 'Vote failed');
         }
       });
   }

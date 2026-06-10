@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { apiBaseUrl } from './api.config';
-import { CreateRecipeRequest, PagedResponse, RecipeDetailsResponse, RecipeFeedItem } from './models';
+import { CreateRecipeRequest, PagedResponse, RecipeDetailsResponse, RecipeFeedItem, RecipeVoteResponse } from './models';
 
 @Injectable({ providedIn: 'root' })
 export class RecipesService {
@@ -35,5 +35,9 @@ export class RecipesService {
 
   deleteRecipe(id: string) {
     return this.http.delete<void>(`${apiBaseUrl}/recipes/${id}`);
+  }
+
+  toggleVote(id: string) {
+    return this.http.post<RecipeVoteResponse>(`${apiBaseUrl}/recipes/${id}/vote`, {});
   }
 }

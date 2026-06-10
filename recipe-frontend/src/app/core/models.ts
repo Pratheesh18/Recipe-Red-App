@@ -41,6 +41,12 @@ export interface RecipeDetailsResponse {
   updatedAt: string | null;
 }
 
+export interface RecipeVoteResponse {
+  recipeId: string;
+  voteCount: number;
+  hasUpvoted: boolean;
+}
+
 export type RecipeEditorMode = 'create' | 'update';
 
 export interface PagedResponse<T> {

@@ -53,12 +53,22 @@
 
     <form class="flex w-full flex-col gap-3 sm:max-w-xl sm:flex-row lg:w-auto" (ngSubmit)="searchRecipes()">
       <input
-        [(ngModel)]="searchTerm"
+        [ngModel]="searchTerm"
+        (ngModelChange)="onSearchTermChange($event)"
         name="searchTerm"
         type="search"
         placeholder="Search recipe titles or descriptions"
         class="min-w-0 flex-1 rounded-full border border-stone-900/10 bg-white px-5 py-3 text-sm text-stone-900 outline-none ring-0 transition placeholder:text-stone-400 focus:border-amber-500"
       />
+      @if (searchTerm.trim()) {
+        <button
+          type="button"
+          (click)="clearSearch()"
+          class="rounded-full border border-stone-900/10 bg-white px-5 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-900 hover:bg-stone-50"
+        >
+          Clear
+        </button>
+      }
       <button
         type="submit"
         class="rounded-full bg-amber-500 px-5 py-3 text-sm font-bold text-stone-900 transition hover:bg-amber-400"
@@ -68,6 +78,10 @@
     </form>
   </div>
 
+  @if (isSearching()) {
+    <p class="mt-4 text-sm font-medium text-stone-500">Searching...</p>
+  }
+
   @if (isLoading()) {
     <div class="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
       @for (item of skeletons; track item) {
@@ -76,9 +90,13 @@
     </div>
   } @else if (recipes().length === 0) {
     <div class="mt-8 rounded-4xl border border-dashed border-stone-900/15 bg-white/70 px-5 py-10 text-center sm:px-6 sm:py-12">
-      <div class="font-display text-2xl text-stone-900 sm:text-3xl">No recipes found yet.</div>
+      <div class="font-display text-2xl text-stone-900 sm:text-3xl">
+        {{ searchTerm.trim() ? 'No recipes match your search.' : 'No recipes found yet.' }}
+      </div>
       <p class="mt-3 text-stone-600">
-        {{ authService.state().isAuthenticated ? 'Be the first to add one from the next protected recipe form.' : 'Register or log in soon to start posting recipes.' }}
+        {{ searchTerm.trim()
+          ? 'Try a different title or description keyword.'
+          : (authService.state().isAuthenticated ? 'Be the first to add one from the next protected recipe form.' : 'Register or log in soon to start posting recipes.') }}
       </p>
     </div>
   } @else {
@@ -113,6 +131,22 @@
             </div>
 
             <div class="flex flex-col gap-2 border-t border-stone-900/8 pt-4 text-sm text-stone-500 sm:flex-row sm:items-center sm:justify-between">
+              <button
+                type="button"
+                [disabled]="isVotePending(recipe.id)"
+                (click)="toggleVote(recipe, $event)"
+                class="inline-flex items-center justify-center rounded-full px-3 py-1.5 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+                [class.bg-amber-500]="recipe.hasUpvoted"
+                [class.text-stone-900]="recipe.hasUpvoted"
+                [class.hover:bg-amber-400]="recipe.hasUpvoted"
+                [class.border]="!recipe.hasUpvoted"
+                [class.border-stone-900/10]="!recipe.hasUpvoted"
+                [class.text-stone-700]="!recipe.hasUpvoted"
+                [class.hover:border-stone-900]="!recipe.hasUpvoted"
+                [class.hover:text-stone-900]="!recipe.hasUpvoted"
+              >
+                {{ isVotePending(recipe.id) ? 'Saving...' : (recipe.hasUpvoted ? 'Upvoted' : 'Upvote') }}
+              </button>
               <span>{{ recipe.voteCount }} votes</span>
             </div>
           </div>

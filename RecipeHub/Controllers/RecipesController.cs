@@ -30,6 +30,10 @@ public class RecipesController : ControllerBase
         [FromQuery] int pageSize = DefaultPageSize,
         [FromQuery] string? search = null)
     {
+        var currentUserId = GetCurrentUserId();
+        var normalizedSearch = string.IsNullOrWhiteSpace(search)
+            ? null
+            : search.Trim().ToLower();
         page = Math.Max(page, 1);
         pageSize = Math.Clamp(pageSize, 1, MaxPageSize);
 
@@ -38,9 +42,8 @@ public class RecipesController : ControllerBase
             .Include(recipe => recipe.User)
             .AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(search))
+        if (!string.IsNullOrWhiteSpace(normalizedSearch))
         {
-            var normalizedSearch = search.Trim().ToLower();
             query = query.Where(recipe =>
                 recipe.Title.ToLower().Contains(normalizedSearch) ||
                 recipe.Description.ToLower().Contains(normalizedSearch));
@@ -58,8 +61,8 @@ public class RecipesController : ControllerBase
                 Title = recipe.Title,
                 ThumbnailUrl = recipe.ThumbnailUrl,
                 Author = recipe.User.UserName,
-                VoteCount = 0,
-                HasUpvoted = false,
+                VoteCount = recipe.Votes.Count(),
+                HasUpvoted = currentUserId.HasValue && recipe.Votes.Any(vote => vote.UserId == currentUserId.Value),
                 CreatedAt = recipe.CreatedAt
             })
             .ToListAsync();
@@ -78,6 +81,7 @@ public class RecipesController : ControllerBase
     [AllowAnonymous]
     public async Task<ActionResult<RecipeDetailsResponse>> GetRecipe(Guid id)
     {
+        var currentUserId = GetCurrentUserId();
         var recipe = await _dbContext.Recipes
             .AsNoTracking()
             .Include(existingRecipe => existingRecipe.User)
@@ -90,8 +94,8 @@ public class RecipesController : ControllerBase
                 ImageUrl = existingRecipe.ImageUrl,
                 ThumbnailUrl = existingRecipe.ThumbnailUrl,
                 Author = existingRecipe.User.UserName,
-                VoteCount = 0,
-                HasUpvoted = false,
+                VoteCount = existingRecipe.Votes.Count(),
+                HasUpvoted = currentUserId.HasValue && existingRecipe.Votes.Any(vote => vote.UserId == currentUserId.Value),
                 CreatedAt = existingRecipe.CreatedAt,
                 UpdatedAt = existingRecipe.UpdatedAt
             })
@@ -200,6 +204,59 @@ public class RecipesController : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:guid}/vote")]
+    [Authorize]
+    public async Task<ActionResult<RecipeVoteResponse>> ToggleVote(Guid id)
+    {
+        var userId = GetCurrentUserId();
+        if (userId is null)
+        {
+            return Unauthorized();
+        }
+
+        var recipeExists = await _dbContext.Recipes
+            .AnyAsync(recipe => recipe.Id == id);
+
+        if (!recipeExists)
+        {
+            return NotFound();
+        }
+
+        var existingVote = await _dbContext.Votes
+            .FirstOrDefaultAsync(vote => vote.RecipeId == id && vote.UserId == userId.Value);
+
+        bool hasUpvoted;
+
+        if (existingVote is null)
+        {
+            _dbContext.Votes.Add(new Vote
+            {
+                Id = Guid.NewGuid(),
+                RecipeId = id,
+                UserId = userId.Value,
+                CreatedAt = DateTime.UtcNow
+            });
+            hasUpvoted = true;
+        }
+        else
+        {
+            _dbContext.Votes.Remove(existingVote);
+            hasUpvoted = false;
+        }
+
+        await _dbContext.SaveChangesAsync();
+
+        var voteCount = await _dbContext.Votes
+            .CountAsync(vote => vote.RecipeId == id);
+
+        return Ok(new RecipeVoteResponse
+        {
+            RecipeId = id,
+            VoteCount = voteCount,
+            HasUpvoted = hasUpvoted
+        });
+    }
+
     private Guid? GetCurrentUserId()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
@@ -216,7 +273,7 @@ public class RecipesController : ControllerBase
             ImageUrl = recipe.ImageUrl,
             ThumbnailUrl = recipe.ThumbnailUrl,
             Author = author,
-            VoteCount = 0,
+            VoteCount = recipe.Votes.Count,
             HasUpvoted = false,
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt

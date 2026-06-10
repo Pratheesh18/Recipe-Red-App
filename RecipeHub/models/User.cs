@@ -15,4 +15,6 @@ public class User
     public ICollection<Recipe> Recipes { get; set; } = new List<Recipe>();
 
     public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+    public ICollection<Vote> Votes { get; set; } = new List<Vote>();
 }

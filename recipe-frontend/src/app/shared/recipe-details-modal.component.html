@@ -43,6 +43,32 @@
             </div>
           </div>
 
+          <div class="flex flex-col gap-3 rounded-[1.5rem] border border-stone-900/8 bg-stone-50 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+            <div>
+              <div class="text-[0.7rem] font-semibold uppercase tracking-[0.22em] text-stone-500">Community vote</div>
+              <div class="mt-2 text-sm text-stone-600">
+                {{ currentRecipe.hasUpvoted ? 'You have upvoted this recipe.' : 'Upvote this recipe if you want to cook it.' }}
+              </div>
+            </div>
+            <button
+              type="button"
+              [disabled]="isVoting()"
+              (click)="toggleVote(currentRecipe)"
+              class="inline-flex items-center justify-center rounded-full px-6 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60"
+              [class.bg-amber-500]="currentRecipe.hasUpvoted"
+              [class.text-stone-900]="currentRecipe.hasUpvoted"
+              [class.hover:bg-amber-400]="currentRecipe.hasUpvoted"
+              [class.border]="!currentRecipe.hasUpvoted"
+              [class.border-stone-900/15]="!currentRecipe.hasUpvoted"
+              [class.bg-white]="!currentRecipe.hasUpvoted"
+              [class.text-stone-700]="!currentRecipe.hasUpvoted"
+              [class.hover:border-stone-900]="!currentRecipe.hasUpvoted"
+              [class.hover:bg-stone-50]="!currentRecipe.hasUpvoted"
+            >
+              {{ isVoting() ? 'Saving...' : (currentRecipe.hasUpvoted ? 'Upvoted' : 'Upvote') }}
+            </button>
+          </div>
+
           <div>
             <p class="text-sm font-semibold uppercase tracking-[0.24em] text-amber-700">Description</p>
             <p class="mt-4 whitespace-pre-line text-base leading-8 text-stone-700 sm:text-lg">

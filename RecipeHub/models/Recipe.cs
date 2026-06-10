@@ -19,4 +19,6 @@ public class Recipe
     public DateTime? UpdatedAt { get; set; }
 
     public User User { get; set; } = null!;
+
+    public ICollection<Vote> Votes { get; set; } = new List<Vote>();
 }
