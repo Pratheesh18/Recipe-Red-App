@@ -6,7 +6,7 @@ RecipeHub is a Reddit-style recipe sharing platform where users can publish reci
 
 The application demonstrates modern full-stack development using:
 
-- ASP.NET Core Web API (.NET 8)
+- ASP.NET Core Web API (.NET 10)
 - Entity Framework Core
 - MS SQL Server
 - Angular
@@ -85,7 +85,7 @@ Cannot:
 
 ## Backend
 
-- ASP.NET Core Web API (.NET 8)
+- ASP.NET Core Web API (.NET 10)
 - Entity Framework Core
 - SQL Server
 - JWT Authentication
