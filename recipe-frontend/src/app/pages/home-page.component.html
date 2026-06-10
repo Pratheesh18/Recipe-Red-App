@@ -114,15 +114,6 @@
 
             <div class="flex flex-col gap-2 border-t border-stone-900/8 pt-4 text-sm text-stone-500 sm:flex-row sm:items-center sm:justify-between">
               <span>{{ recipe.voteCount }} votes</span>
-              @if (isRecipeOwner(recipe)) {
-                <button
-                  type="button"
-                  (click)="openUpdateRecipeModal(recipe.id); $event.stopPropagation()"
-                  class="rounded-full border border-stone-900/10 px-3 py-1 font-semibold text-stone-700 transition hover:border-stone-900 hover:text-stone-900"
-                >
-                  Edit
-                </button>
-              }
             </div>
           </div>
         </article>

@@ -56,10 +56,6 @@ export class HomePageComponent {
     this.recipeDetailsModalService.open(recipeId);
   }
 
-  protected openUpdateRecipeModal(recipeId: string): void {
-    this.recipeEditorModalService.openUpdate(recipeId);
-  }
-
   protected isRecipeOwner(recipe: RecipeFeedItem): boolean {
     return this.authService.state().userName === recipe.author;
   }

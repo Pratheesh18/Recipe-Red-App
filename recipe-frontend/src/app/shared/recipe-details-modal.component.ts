@@ -2,8 +2,10 @@ import { DatePipe } from '@angular/common';
 import { Component, DestroyRef, effect, inject, signal } from '@angular/core';
 import { finalize } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { AuthService } from '../core/auth.service';
 import { RecipeDetailsResponse } from '../core/models';
 import { RecipeDetailsModalService } from '../core/recipe-details-modal.service';
+import { RecipeEditorModalService } from '../core/recipe-editor-modal.service';
 import { RecipesService } from '../core/recipes.service';
 import { ToastService } from '../core/toast.service';
 
@@ -14,7 +16,9 @@ import { ToastService } from '../core/toast.service';
   templateUrl: './recipe-details-modal.component.html'
 })
 export class RecipeDetailsModalComponent {
+  protected readonly authService = inject(AuthService);
   private readonly modalService = inject(RecipeDetailsModalService);
+  private readonly recipeEditorModalService = inject(RecipeEditorModalService);
   private readonly recipesService = inject(RecipesService);
   private readonly toastService = inject(ToastService);
   private readonly destroyRef = inject(DestroyRef);
@@ -22,6 +26,7 @@ export class RecipeDetailsModalComponent {
   protected readonly state = this.modalService.state;
   protected readonly recipe = signal<RecipeDetailsResponse | null>(null);
   protected readonly isLoading = signal(false);
+  protected readonly isDeleting = signal(false);
 
   constructor() {
     effect(() => {
@@ -54,6 +59,46 @@ export class RecipeDetailsModalComponent {
   }
 
   protected close(): void {
+    if (this.isDeleting()) {
+      return;
+    }
+
     this.modalService.close();
+  }
+
+  protected isRecipeOwner(recipe: RecipeDetailsResponse): boolean {
+    return this.authService.state().userName === recipe.author;
+  }
+
+  protected openUpdateRecipeModal(recipeId: string): void {
+    this.modalService.close();
+    this.recipeEditorModalService.openUpdate(recipeId);
+  }
+
+  protected deleteRecipe(recipeId: string): void {
+    if (this.isDeleting()) {
+      return;
+    }
+
+    const confirmed = window.confirm('Delete this recipe? This action cannot be undone.');
+    if (!confirmed) {
+      return;
+    }
+
+    this.isDeleting.set(true);
+
+    this.recipesService
+      .deleteRecipe(recipeId)
+      .pipe(finalize(() => this.isDeleting.set(false)))
+      .subscribe({
+        next: () => {
+          this.modalService.close();
+          this.recipeEditorModalService.notifyMutation();
+          this.toastService.success('Recipe deleted successfully.', 'Recipe deleted');
+        },
+        error: () => {
+          this.toastService.error('We could not delete this recipe right now.', 'Delete failed');
+        }
+      });
   }
 }

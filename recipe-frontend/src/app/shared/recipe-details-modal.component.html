@@ -50,7 +50,24 @@
             </p>
           </div>
 
-          <div class="flex justify-end">
+          <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            @if (isRecipeOwner(currentRecipe)) {
+              <button
+                type="button"
+                (click)="openUpdateRecipeModal(currentRecipe.id)"
+                class="rounded-full border border-stone-900/15 bg-white px-6 py-3 text-sm font-semibold text-stone-700 transition hover:border-stone-900 hover:bg-stone-50"
+              >
+                Edit Recipe
+              </button>
+              <button
+                type="button"
+                [disabled]="isDeleting()"
+                (click)="deleteRecipe(currentRecipe.id)"
+                class="rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-red-300"
+              >
+                {{ isDeleting() ? 'Deleting...' : 'Delete Recipe' }}
+              </button>
+            }
             <button
               type="button"
               (click)="close()"

@@ -32,4 +32,8 @@ export class RecipesService {
   updateRecipe(id: string, payload: CreateRecipeRequest) {
     return this.http.put<RecipeDetailsResponse>(`${apiBaseUrl}/recipes/${id}`, payload);
   }
+
+  deleteRecipe(id: string) {
+    return this.http.delete<void>(`${apiBaseUrl}/recipes/${id}`);
+  }
 }
